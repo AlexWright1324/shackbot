@@ -165,6 +165,7 @@
                 UV_PYTHON = pythonSet.python.interpreter;
                 UV_PYTHON_DOWNLOADS = "never";
                 LD_LIBRARY_PATH = lib.makeLibraryPath pkgs.pythonManylinuxPackages.manylinux1;
+                ROOT_DIR = ".rootdir";
               };
 
               shellHook = ''

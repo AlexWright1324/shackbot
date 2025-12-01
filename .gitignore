@@ -7,5 +7,8 @@ just-flake.just
 __pycache__/
 *.egg-info/
 
+# Custom
+.rootdir
+
 # SECRETS
 .env

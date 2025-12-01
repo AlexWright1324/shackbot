@@ -5,6 +5,8 @@ from discord.ext import commands
 import asyncio
 import traceback
 
+from importlib.resources import files
+
 from face2face import Face2Face
 from media_toolkit import ImageFile
 
@@ -82,9 +84,9 @@ class Kirkify(commands.Cog):
 
     async def cog_load(self):
         self.f2f = await asyncio.to_thread(Face2Face)
-        self.kirk = await asyncio.to_thread(
-            self.f2f.add_face, "kirk", "static/kirk.jpg"
-        )
+
+        kirkPath = str(files("shackbot.static").joinpath("kirk.jpg"))
+        self.kirk = await asyncio.to_thread(self.f2f.add_face, "kirk", kirkPath)
 
     @app_commands.command(name="kirkify")
     @app_commands.describe(attachment="Image to kirkify")
