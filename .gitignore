@@ -2,3 +2,10 @@
 .direnv
 .pre-commit-config.yaml
 just-flake.just
+
+# Python
+__pycache__/
+*.egg-info/
+
+# SECRETS
+.env
