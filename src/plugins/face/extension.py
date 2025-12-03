@@ -14,7 +14,11 @@ MAX_WORKERS = 1
 MAX_SIZE = 8 * 1024 * 1024  # 8MB
 
 
-class Kirkify(commands.Cog):
+async def setup(bot: commands.Bot):
+    await bot.add_cog(Face(bot))
+
+
+class Face(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
         self.f2f = None
@@ -104,7 +108,3 @@ class Kirkify(commands.Cog):
             f"Your image has been queued for kirkification!\nPosition in queue: {queueSize}",
             ephemeral=True,
         )
-
-
-async def setup(bot: commands.Bot):
-    await bot.add_cog(Kirkify(bot))

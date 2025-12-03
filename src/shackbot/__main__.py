@@ -23,7 +23,7 @@ def create_bot() -> commands.Bot:
         if bot.user is not None:
             print(f"Logged in as {bot.user.name}#{bot.user.discriminator}")
 
-        plugins = ["kirkify", "nerd"]
+        plugins = ["face", "nerd"]
         print(f"Loading {len(plugins)} plugins...")
 
         for plugin in plugins:

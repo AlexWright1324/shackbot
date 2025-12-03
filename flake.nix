@@ -116,6 +116,10 @@
               sourcePreference = "wheel";
             };
 
+            editableOverlay = workspace.mkEditablePyprojectOverlay {
+              root = "$REPO_ROOT";
+            };
+
             # Overlay to fix onnxruntime-gpu autoPatchelfHook issues
             pyProjectOverrides = final: prev: {
               onnxruntime-gpu = prev.onnxruntime-gpu.overrideAttrs (old: {
@@ -132,9 +136,11 @@
               });
             };
 
-            pythonSet =
+            python = pkgs.python313;
+
+            packagePythonSet =
               (pkgs.callPackage inputs.pyproject-nix.build.packages {
-                python = pkgs.python313;
+                inherit python;
               }).overrideScope
                 (
                   lib.composeManyExtensions [
@@ -148,30 +154,36 @@
           in
           {
             packages.default = mkApplication {
-              venv = pythonSet.mkVirtualEnv "shackbot-env" workspace.deps.default;
-              package = pythonSet.shackbot;
+              venv = packagePythonSet.mkVirtualEnv "shackbot-env" workspace.deps.default;
+              package = packagePythonSet.shackbot;
             };
 
-            devShells.default = pkgs.mkShell {
-              inputsFrom = [
-                config.pre-commit.devShell
-              ];
-              packages = with pkgs; [
-                virtualenv
-                uv
-              ];
-              env = {
-                UV_NO_SYNC = "1";
-                UV_PYTHON = pythonSet.python.interpreter;
-                UV_PYTHON_DOWNLOADS = "never";
-                LD_LIBRARY_PATH = lib.makeLibraryPath pkgs.pythonManylinuxPackages.manylinux1;
-                ROOT_DIR = ".rootdir";
-              };
+            devShells.default = pkgs.mkShell (
+              let
+                pythonSet = packagePythonSet.overrideScope editableOverlay;
+                virtualenv = pythonSet.mkVirtualEnv "shackbot-dev-env" workspace.deps.all;
+              in
+              {
+                inputsFrom = [
+                  config.pre-commit.devShell
+                ];
+                packages = [
+                  virtualenv
+                  pkgs.uv
+                ];
+                env = {
+                  UV_NO_SYNC = "1";
+                  UV_PYTHON = pythonSet.python.interpreter;
+                  UV_PYTHON_DOWNLOADS = "never";
+                  ROOT_DIR = ".rootdir";
+                };
 
-              shellHook = ''
-                unset PYTHONPATH
-              '';
-            };
+                shellHook = ''
+                  unset PYTHONPATH
+                  export REPO_ROOT=$(git rev-parse --show-toplevel)
+                '';
+              }
+            );
 
             pre-commit.settings.hooks = {
               nil.enable = true;
