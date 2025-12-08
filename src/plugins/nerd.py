@@ -8,6 +8,7 @@ class Nerd(commands.Cog):
         self.target_user_id = 285808510028087297
         self.muted_at = None
 
+    """
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message):
         if message.author.id != self.target_user_id:
@@ -16,6 +17,7 @@ class Nerd(commands.Cog):
         # TODO: end formatting, only add space before emoji if needed
         # rstrip
         await message.reply(f"{message.content.rstrip()} ☝️🤓")
+    """
 
     @commands.Cog.listener()
     async def on_voice_state_update(
