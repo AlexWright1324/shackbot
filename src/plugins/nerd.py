@@ -44,19 +44,34 @@ class Nerd(commands.Cog):
 
         muted_duration = discord.utils.utcnow() - self.muted_at
         muted_seconds = muted_duration.total_seconds()
-        if muted_seconds >= 60 * 5:
-            hours = int(muted_seconds // 3600)
-            minutes = int((muted_seconds % 3600) // 60)
-            seconds = int(muted_seconds % 60)
-            time_parts = []
-            if hours > 0:
-                time_parts.append(f"{hours}h")
-            if minutes > 0:
-                time_parts.append(f"{minutes}m")
-            if seconds > 0:
-                time_parts.append(f"{seconds}s")
-            time_str = " ".join(time_parts)
-            await after.channel.send(f"Bro had din dins for {time_str} ☝️🤓")
+        if muted_seconds < 60 * 5:
+            return
+
+        hours = int(muted_seconds // 3600)
+        minutes = int((muted_seconds % 3600) // 60)
+        seconds = int(muted_seconds % 60)
+        time_parts = []
+        if hours > 0:
+            time_parts.append(f"{hours}h")
+        if minutes > 0:
+            time_parts.append(f"{minutes}m")
+        if seconds > 0:
+            time_parts.append(f"{seconds}s")
+        time_str = " ".join(time_parts)
+
+        channels = member.guild.text_channels
+        if member.guild.system_channel is not None:
+            channels.append(member.guild.system_channel)
+
+        # Prioritize channel named "general"
+        channels.sort(key=lambda c: c.name != "general")
+
+        for channel in channels:
+            if not channel.permissions_for(member.guild.me).send_messages:
+                continue
+
+            await channel.send(f"Bro had din dins for {time_str} ☝️🤓")
+            break
 
 
 async def setup(bot: commands.Bot):
