@@ -58,7 +58,7 @@ class RetinaFace:
         self.session = onnxruntime.InferenceSession(model_file)
         self.center_cache = {}
         self.nms_thresh = 0.4
-        self.det_thresh = 0.5
+        self.det_thresh = 0.3
         self.input_mean = 127.5
         self.input_std = 128.0
         self.use_kps = False
