@@ -1,6 +1,7 @@
 import os
 import asyncio
 import discord
+import traceback
 
 from discord import app_commands
 from discord.ext import commands
@@ -24,16 +25,15 @@ def create_bot() -> commands.Bot:
             print(f"Logged in as {bot.user.name}#{bot.user.discriminator}")
 
         plugins = ["face", "nerd"]
-        print(f"Loading {len(plugins)} plugins...")
+        print(f" --- Loading {len(plugins)} plugins... ---")
 
         for plugin in plugins:
-            print(f" - Loading {plugin}...")
+            print(f" - Loading {plugin}... -")
             try:
-                await bot.load_extension(f"plugins.{plugin}")
-                print("   Loaded")
-            except Exception as e:
-                print("   Failed to load:")
-                print(e)
+                await bot.load_extension(f"shackbot.plugins.{plugin}")
+            except Exception as _:
+                print(traceback.format_exc())
+                print(f"Failed to load: {plugin}")
 
         try:
             synced = await bot.tree.sync()

@@ -7,7 +7,7 @@ import onnxruntime
 
 from face2face.core.compatibility.Face import Face
 from face2face.core.compatibility.FaceAnalysis import FaceAnalysis
-from face2face.core.compatibility.INSwapper import INSwapper
+from plugins.face.FaceSwapper import FaceSwapper
 from face2face.core.mixins._image_swap import _ImageSwap
 from media_toolkit import VideoFile, ImageFile, MediaList
 
@@ -20,8 +20,12 @@ from face2face.core.modules.utils import load_image, download_model
 from face2face.settings import EMBEDDINGS_DIR, DEVICE_ID
 
 
-class Face2Face(_ImageSwap, _FaceEmbedding, _FaceRecognition, _Video_Swap, _FaceEnhancer):
-    def __init__(self, face_embedding_folder: str = None, device_id: int = None):
+class Face2Face(
+    _ImageSwap, _FaceEmbedding, _FaceRecognition, _Video_Swap, _FaceEnhancer
+):
+    def __init__(
+        self, face_embedding_folder: str | None = None, device_id: int | None = None
+    ):
         """
         :param model_path: the folder where the models are stored and downloaded to.
             results in structure like models/insightface/inswapper_128.onnx model
@@ -39,13 +43,15 @@ class Face2Face(_ImageSwap, _FaceEmbedding, _FaceRecognition, _Video_Swap, _Face
 
         if "CUDAExecutionProvider" in self.providers:
             self.providers.remove("CUDAExecutionProvider")
-            self.providers.append(("CUDAExecutionProvider", {'device_id': device_id}))
-            self.providers = [("CUDAExecutionProvider", {'device_id': device_id})]
+            self.providers.append(("CUDAExecutionProvider", {"device_id": device_id}))
+            self.providers = [("CUDAExecutionProvider", {"device_id": device_id})]
 
-        self._face_analyser = FaceAnalysis(model_dir=face_analyiser_models_path, providers=self.providers)
+        self._face_analyser = FaceAnalysis(
+            model_dir=face_analyiser_models_path, providers=self.providers
+        )
         self._face_analyser.prepare(ctx_id=0, det_size=(320, 320))
 
-        self._face_swapper = INSwapper(model_file=swapper_model_file_path, providers=self.providers)
+        self._face_swapper = FaceSwapper(swapper_model_file_path)
 
         # face swapper has the option to swap images from previously stored faces as embeddings
         # they dict has structure {faces: face_embedding }
@@ -57,10 +63,19 @@ class Face2Face(_ImageSwap, _FaceEmbedding, _FaceRecognition, _Video_Swap, _Face
 
     def swap(
         self,
-        media: Union[str, np.ndarray, tuple, List[str], ImageFile, VideoFile, List[ImageFile], MediaList],
+        media: Union[
+            str,
+            np.ndarray,
+            tuple,
+            List[str],
+            ImageFile,
+            VideoFile,
+            List[ImageFile],
+            MediaList,
+        ],
         faces: Union[str, dict, list, List[Face], Face, ImageFile] = None,
-        enhance_face_model: Union[str, None] = 'gpen_bfr_512',
-        include_audio: bool = True
+        enhance_face_model: Union[str, None] = "gpen_bfr_512",
+        include_audio: bool = True,
     ) -> Union[ImageFile, VideoFile, MediaList]:
         """
         Perform a unified face swap operation on images, videos, or streams.
@@ -113,7 +128,7 @@ class Face2Face(_ImageSwap, _FaceEmbedding, _FaceRecognition, _Video_Swap, _Face
 
         if media is None:
             raise ValueError("Please provide media to swap.")
-        
+
         # TODO: the fucking faces in dict is a shit with swapping by pairs (with recognition)
         # Needs to be fixed.
         if faces is not None and not isinstance(faces, dict):
@@ -138,23 +153,32 @@ class Face2Face(_ImageSwap, _FaceEmbedding, _FaceRecognition, _Video_Swap, _Face
         # face based swaps
         if faces is None:
             raise ValueError("Please provide faces to swap to.")
-        
+
         if len(media) >= 2:
-            swapped = [self.swap(inp, faces, enhance_face_model, include_audio) for inp in media]
+            swapped = [
+                self.swap(inp, faces, enhance_face_model, include_audio)
+                for inp in media
+            ]
             return MediaList().from_any(swapped)
 
         if isinstance(media[0], ImageFile):
             if not isinstance(faces, Face) and isinstance(faces, dict):
                 return self.swap_pairs(media[0], faces, enhance_face_model)
-            return self.swap_to_faces(image=media[0], faces=faces, enhance_face_model=enhance_face_model)
+            return self.swap_to_faces(
+                image=media[0], faces=faces, enhance_face_model=enhance_face_model
+            )
         elif isinstance(media[0], VideoFile):
             if not isinstance(faces, Face) and isinstance(faces, dict):
-                return self.swap_pairs_in_video(faces, media[0], enhance_face_model, include_audio)
+                return self.swap_pairs_in_video(
+                    faces, media[0], enhance_face_model, include_audio
+                )
             return self.swap_video(media[0], faces, enhance_face_model, include_audio)
 
         raise ValueError(f"Wrong file type {media}. Check input.")
 
-    def detect_faces(self, image: Union[np.array, str, ImageFile]) -> Union[List | None]:
+    def detect_faces(
+        self, image: Union[np.array, str, ImageFile]
+    ) -> Union[List | None]:
         """
         get faces from left to right by order
         """

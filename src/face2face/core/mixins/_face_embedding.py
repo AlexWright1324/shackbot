@@ -23,7 +23,9 @@ from face2face.core.modules.utils import encode_path_safe
 
 
 class _FaceEmbedding:
-    def convert_to_face(self, media: Union[ImageFile, MediaFile, str, Face]) -> List[Face]:
+    def convert_to_face(
+        self, media: Union[ImageFile, MediaFile, str, Face]
+    ) -> List[Face]:
         """
         Convert various media inputs to face embeddings.
 
@@ -40,10 +42,10 @@ class _FaceEmbedding:
 
         if isinstance(media, FileWriteableFace):
             return [media.to_face()]
-        
+
         if isinstance(media, Face):
             return [media]
-        
+
         # Detect faces in ImageFile or image path
         if isinstance(media, ImageFile):
             detected_faces = self.detect_faces(media)
@@ -54,19 +56,21 @@ class _FaceEmbedding:
         # Face embedding stored in MediaFile
         if isinstance(media, MediaFile) and not isinstance(media, ImageFile):
             return [self._load_reference_face_from_file(media.to_bytes_io())]
-            
+
         # Face_name or path
         if isinstance(media, str) and is_valid_file_path(media):
             mf = media_from_any(media)
             return self.convert_to_face(mf)
 
         raise ValueError("Could not convert media to face")
-        
+
     @staticmethod
-    def _load_reference_face_from_file(face_embedding_file_path: Union[str, BytesIO]) -> Union[Face, None]:
+    def _load_reference_face_from_file(
+        face_embedding_file_path: Union[str, BytesIO],
+    ) -> Union[Face, None]:
         """
         Load a reference face from a file or BytesIO buffer.
-        
+
         Args:
             face_embedding_file_path: Source of the face embedding. Can be:
                 - str: Path to a .npy file containing the face embedding
@@ -78,8 +82,10 @@ class _FaceEmbedding:
         """
         if not isinstance(face_embedding_file_path, (str, BytesIO)):
             return None
-        
-        if isinstance(face_embedding_file_path, str) and not is_valid_file_path(face_embedding_file_path):
+
+        if isinstance(face_embedding_file_path, str) and not is_valid_file_path(
+            face_embedding_file_path
+        ):
             return None
 
         try:
@@ -87,7 +93,7 @@ class _FaceEmbedding:
             embedding = np.load(face_embedding_file_path, allow_pickle=True)
             return FileWriteableFace.to_face(embedding)
         except Exception as e:
-            print(f"Error loading reference face {face_embedding_file_path}: {e}")
+            # print(f"Error loading reference face {face_embedding_file_path}: {e}")
             return None
 
     def _load_from_cache(self, face_name: str) -> Union[Face, None]:
@@ -97,7 +103,7 @@ class _FaceEmbedding:
         """
         if not isinstance(face_name, str):
             return None
-        
+
         normalized_face_name = os.path.basename(encode_path_safe(face_name))
         return self._face_embeddings.get(normalized_face_name)
 
@@ -105,7 +111,9 @@ class _FaceEmbedding:
         """
         Load a reference face from the _face_embeddings folder.
         """
-        embedding_name = os.path.join(EMBEDDINGS_DIR, os.path.basename(encode_path_safe(face_name)))
+        embedding_name = os.path.join(
+            EMBEDDINGS_DIR, os.path.basename(encode_path_safe(face_name))
+        )
         extensions = [".npy", ".npz"]
         for ext in extensions:
             if is_valid_file_path(embedding_name + ext):
@@ -115,7 +123,7 @@ class _FaceEmbedding:
     def load_all_face_embeddings(self: Face2Face) -> Dict[str, Face]:
         """
         Load all face embeddings from the _face_embeddings folder.
-        
+
         Returns:
             Dict[str, Face]: Dictionary mapping face names to their embeddings
         """
@@ -131,9 +139,9 @@ class _FaceEmbedding:
             return source
         elif isinstance(source, MediaFile):
             return source.file_name
-    
+
         return "face_" + str(uuid.uuid4())
-        
+
     def _get_face(self, media: Union[str, MediaFile, ImageFile, Face]) -> dict:
         strategies = [
             self._load_from_cache,
@@ -147,7 +155,7 @@ class _FaceEmbedding:
 
             if not isinstance(new_faces, list):
                 new_faces = [new_faces]
-             
+
             converted_faces = {}
             for j, face in enumerate(new_faces):
                 face_name = self._determine_face_name(media)
@@ -158,15 +166,14 @@ class _FaceEmbedding:
         return None
 
     def get_faces(
-        self, 
-        faces: Union[str, Face, ImageFile, MediaFile, list, MediaList]
+        self, faces: Union[str, Face, ImageFile, MediaFile, list, MediaList]
     ) -> Dict[str, Face]:
         """
         Load face embeddings from various sources.
-        
+
         Args:
             faces: The source of face embeddings to load. Can be:
-                - str: 
+                - str:
                     * registered face name → loads the face from the _face_embeddings folder
                     * Path/URL to an image → faces are detected from the image and used as swap targets.
                     * Path/URL to an embedding file (.npy, etc.).
@@ -185,7 +192,7 @@ class _FaceEmbedding:
         """
         if faces is None:
             raise ValueError("Please provide at least one face name or input")
-        
+
         # Convert to MediaList for unified handling
         if not isinstance(faces, (list, MediaList)):
             faces = [faces]
@@ -196,23 +203,23 @@ class _FaceEmbedding:
             try:
                 new_faces = self._get_face(media)
             except Exception as e:
-                print(f"Error loading faces for input {i}: {e}")
+                # print(f"Error loading faces for input {i}: {e}")
                 continue
             if new_faces is None:
-                print(f"No faces could be loaded for input {i}")
+                # print(f"No faces could be loaded for input {i}")
                 continue
             converted_faces.update(new_faces)
-  
+
         if len(converted_faces) == 0:
             raise ValueError("No faces could be loaded")
-        
+
         return converted_faces
 
     def add_face(
         self: Face2Face,
         face_name: Union[str, List[str]],
         media: Union[np.array, str, ImageFile, MediaFile],
-        save: bool = False
+        save: bool = False,
     ) -> Union[Tuple[str, Face], Dict[str, Face]]:
         """
         Add one or multiple reference face(s) to the face swapper. This face(s) can be used for swapping in other images.
@@ -252,14 +259,18 @@ class _FaceEmbedding:
 
         # Handle case where we have more names than faces
         if len(face_name) > len(faces_list):
-            print(f"Not enough faces in the media for all provided face names. "
-                  f"Only {len(faces_list)} faces found. Using first {len(faces_list)} names.")
-            face_name = face_name[:len(faces_list)]
+            # print(
+            #    f"Not enough faces in the media for all provided face names. "
+            #    f"Only {len(faces_list)} faces found. Using first {len(faces_list)} names."
+            # )
+            face_name = face_name[: len(faces_list)]
 
         # Handle case where we have fewer names than faces
         elif len(face_name) < len(faces_list):
-            print(f"More faces detected ({len(faces_list)}) than names provided ({len(face_name)}). "
-                  f"Using provided names and generating additional names.")
+            # print(
+            #    f"More faces detected ({len(faces_list)}) than names provided ({len(face_name)}). "
+            #    f"Using provided names and generating additional names."
+            # )
             # Keep provided names and generate additional ones
             for i in range(len(face_name), len(faces_list)):
                 face_name.append(f"{face_name[0]}_{i}" if face_name else f"face_{i}")
@@ -277,7 +288,7 @@ class _FaceEmbedding:
             # Store in memory
             self._face_embeddings[encoded_name] = face
 
-            # writeable face 
+            # writeable face
             embedding_face = FileWriteableFace(face)
 
             # Optionally save to disk
@@ -285,7 +296,8 @@ class _FaceEmbedding:
                 os.makedirs(EMBEDDINGS_DIR, exist_ok=True)
                 filename = os.path.join(EMBEDDINGS_DIR, f"{encoded_name}.npy")
                 if os.path.exists(filename):
-                    print(f"Reference face {encoded_name} already exists. Overwriting.")
+                    # print(f"Reference face {encoded_name} already exists. Overwriting.")
+                    pass
                 embedding_face.to_file(filename)
 
             result_faces[encoded_name] = face

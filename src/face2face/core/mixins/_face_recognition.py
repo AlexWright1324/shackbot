@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Union, List, Dict
 if TYPE_CHECKING:
     from face2face.core.face2face import Face2Face
     from media_toolkit import ImageFile
-    
+
 # normal imports
 
 from face2face.core.modules.utils import load_image
@@ -18,11 +18,12 @@ class _FaceRecognition:
     """
     Face recognition - Mixin. Provides functions for identification, and swapping of known reference faces.
     """
+
     def face_recognition(
-            self: Face2Face,
-            image: Union[np.array, str, 'ImageFile'],
-            face_names: Union[str, List[str], None] = None,
-            threshold: float = 0.5
+        self: Face2Face,
+        image: Union[np.array, str, "ImageFile"],
+        face_names: Union[str, List[str], None] = None,
+        threshold: float = 0.5,
     ) -> list:
         """
         Given an image the method recognizes the faces in the image.
@@ -57,11 +58,11 @@ class _FaceRecognition:
         return recognized_faces
 
     def swap_pairs(
-            self: Face2Face,
-            image: Union[np.array, str, 'ImageFile'],
-            swap_pairs: dict,
-            enhance_face_model: str = 'gpen_bfr_512',
-            threshold: float = 0.5
+        self: Face2Face,
+        image: Union[np.array, str, "ImageFile"],
+        swap_pairs: dict,
+        enhance_face_model: str = "gpen_bfr_512",
+        threshold: float = 0.5,
     ) -> ImageFile:
         """
         Based on the swap_pairs, swap the source faces to the target faces if they are recognized.
@@ -73,14 +74,14 @@ class _FaceRecognition:
 
         # recognize the faces of first swap partners in the image
         recognized_partner_faces = self.face_recognition(
-            image,
-            face_names=list(swap_pairs.keys()),
-            threshold=threshold
+            image, face_names=list(swap_pairs.keys()), threshold=threshold
         )
 
         # load the faces of the second swap partners
         swap_partner_embeddings = self.get_faces(faces=list(swap_pairs.values()))
-        swap_partner_embeddings = self._to_single_face_embeddings(swap_partner_embeddings)
+        swap_partner_embeddings = self._to_single_face_embeddings(
+            swap_partner_embeddings
+        )
 
         # swap faces of recognized partners to the second swap partners
         swap_embeddings = []
@@ -92,15 +93,15 @@ class _FaceRecognition:
             source_faces=swap_embeddings,
             target_faces=[rec[2] for rec in recognized_partner_faces],
             image=image,
-            enhance_face_model=enhance_face_model
+            enhance_face_model=enhance_face_model,
         )
 
     def swap_pairs_generator(
-            self: Face2Face,
-            swap_pairs: dict,
-            image_generator,
-            enhance_face_model: Union[str, None] = 'gpen_bfr_2048',
-            recognition_threshold: float = 0.5
+        self: Face2Face,
+        swap_pairs: dict,
+        image_generator,
+        enhance_face_model: Union[str, None] = "gpen_bfr_2048",
+        recognition_threshold: float = 0.5,
     ):
         """
         Swaps the reference faces in the target image.
@@ -110,7 +111,9 @@ class _FaceRecognition:
         :return: a generator that yields the swapped images or tuples (image, audio)
         """
         if not isinstance(swap_pairs, dict):
-            raise ValueError("Please provide a dict with the structure {source_face_name: target_face_name}")
+            raise ValueError(
+                "Please provide a dict with the structure {source_face_name: target_face_name}"
+            )
 
         for i, target_image in enumerate(image_generator):
             # check if generator yields tuples (video, audio) or only images
@@ -123,7 +126,7 @@ class _FaceRecognition:
                     swap_pairs=swap_pairs,
                     image=target_image,
                     enhance_face_model=enhance_face_model,
-                    threshold=recognition_threshold
+                    threshold=recognition_threshold,
                 )
 
                 if audio is not None:
@@ -133,7 +136,7 @@ class _FaceRecognition:
                 yield swapped
                 continue
             except Exception as e:
-                print(f"Error in swapping frame {i}: {e}. Skipping image")
+                # print(f"Error in swapping frame {i}: {e}. Skipping image")
                 if audio is not None:
                     yield target_image, audio
                     continue
@@ -141,9 +144,9 @@ class _FaceRecognition:
                 yield np.array(target_image)
 
     def calculate_face_distances(
-            self: Face2Face,
-            face_list_1: List[Face],
-            face_list_2: Union[List[Face], Dict[str, Face]]
+        self: Face2Face,
+        face_list_1: List[Face],
+        face_list_2: Union[List[Face], Dict[str, Face]],
     ) -> list:
         """
         Calculate the face distances between the detected faces and the reference faces.
@@ -170,7 +173,9 @@ class _FaceRecognition:
             for reference_face_name, reference_face in face_list_2_flat.items():
                 dist = self.calc_face_distance(face, reference_face)
                 face_dists[reference_face_name] = dist
-            face_dists = OrderedDict(sorted(face_dists.items(), key=lambda x: x[1], reverse=False))
+            face_dists = OrderedDict(
+                sorted(face_dists.items(), key=lambda x: x[1], reverse=False)
+            )
             face_distances.append(face_dists)
         return face_distances
 
@@ -188,7 +193,9 @@ class _FaceRecognition:
 
     @staticmethod
     def calc_face_distance(face: Face, reference_face: Face) -> float:
-        if hasattr(face, 'normed_embedding') and hasattr(reference_face, 'normed_embedding'):
+        if hasattr(face, "normed_embedding") and hasattr(
+            reference_face, "normed_embedding"
+        ):
             return 1 - np.dot(face.normed_embedding, reference_face.normed_embedding)
         return 1
 

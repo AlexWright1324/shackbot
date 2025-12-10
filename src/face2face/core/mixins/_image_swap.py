@@ -17,7 +17,7 @@ if TYPE_CHECKING:
 from face2face.core.modules.utils import load_image, download_model
 import numpy as np
 
-types_faces = Union[str, Face, list, 'ImageFile', 'MediaFile', 'MediaList']
+types_faces = Union[str, Face, list, "ImageFile", "MediaFile", "MediaList"]
 
 
 class _ImageSwap:
@@ -25,7 +25,7 @@ class _ImageSwap:
         self: Face2Face,
         source_image: Union[np.array, str, ImageFile],
         target_image: Union[np.array, str, ImageFile],
-        enhance_face_model: Union[str, None] = 'gpen_bfr_512'
+        enhance_face_model: Union[str, None] = "gpen_bfr_512",
     ) -> ImageFile:
         """
         Changes the face(s) of the target image to the face(s) of the source image.
@@ -44,15 +44,17 @@ class _ImageSwap:
         target_faces = self.detect_faces(target_image)
 
         return self._swap_faces(
-            source_faces=source_faces, target_faces=target_faces,
-            image=target_image, enhance_face_model=enhance_face_model
+            source_faces=source_faces,
+            target_faces=target_faces,
+            image=target_image,
+            enhance_face_model=enhance_face_model,
         )
 
     def swap_to_faces(
-            self: Face2Face,
-            faces: types_faces,
-            image: Union[np.array, list, ImageFile],
-            enhance_face_model: Union[str, None] = 'gpen_bfr_2048'
+        self: Face2Face,
+        faces: types_faces,
+        image: Union[np.array, list, ImageFile],
+        enhance_face_model: Union[str, None] = "gpen_bfr_2048",
     ) -> ImageFile:
         """
         Changes the face(s) of the target image to the face of the reference image.
@@ -67,7 +69,7 @@ class _ImageSwap:
             gen = self.swap_to_face_generator(
                 faces=faces,
                 image_generator=image,
-                enhance_face_model=enhance_face_model
+                enhance_face_model=enhance_face_model,
             )
             return list(gen)
 
@@ -76,8 +78,10 @@ class _ImageSwap:
         source_faces = list(source_faces.values())
         target_faces = self.detect_faces(image)
         return self._swap_faces(
-            source_faces=source_faces, target_faces=target_faces,
-            image=image, enhance_face_model=enhance_face_model
+            source_faces=source_faces,
+            target_faces=target_faces,
+            image=image,
+            enhance_face_model=enhance_face_model,
         )
 
     def _swap_faces(
@@ -85,7 +89,7 @@ class _ImageSwap:
         source_faces: List[Face],
         target_faces: List[Face],
         image: Union[np.array, str, ImageFile],
-        enhance_face_model: str = 'gpen_bfr_512',
+        enhance_face_model: str = "gpen_bfr_512",
     ) -> ImageFile:
         """
         Changes the face(s) of the target image to the face(s) of the source image.
@@ -100,7 +104,7 @@ class _ImageSwap:
             raise Exception("No source faces found!")
 
         if target_faces is None or len(target_faces) == 0:
-            print("No face found in image. Return image as is")
+            # print("No face found in image. Return image as is")
             return image
 
         # make sure it is a numpy array
@@ -110,7 +114,9 @@ class _ImageSwap:
         # iter through all target faces and swap them with the source faces
         # if there are more target faces than source faces, the source face index is reset
         for target_index in range(len(target_faces)):
-            source_index = target_index % len(source_faces)  # 6 % 5 = 1 and 1 % 5 = 1 ...
+            source_index = target_index % len(
+                source_faces
+            )  # 6 % 5 = 1 and 1 % 5 = 1 ...
 
             # having none values in the array allows users to skip faces
             source_face = source_faces[source_index]
@@ -123,14 +129,25 @@ class _ImageSwap:
                 source_face,
                 paste_back=True,
             )
-            if enhance_face_model is not None and isinstance(enhance_face_model, str) and len(enhance_face_model) > 0:
+            if (
+                enhance_face_model is not None
+                and isinstance(enhance_face_model, str)
+                and len(enhance_face_model) > 0
+            ):
                 try:
-                    download_model(enhance_face_model)  # make sure face enhance model is downloaded
+                    download_model(
+                        enhance_face_model
+                    )  # make sure face enhance model is downloaded
                     result = enhance_face(
-                        target_face=target_faces[target_index], temp_vision_frame=result, model=enhance_face_model
+                        target_face=target_faces[target_index],
+                        temp_vision_frame=result,
+                        model=enhance_face_model,
                     )
                 except Exception as e:
-                    print(f"Error in enhancing face {target_index}: {e}. Returning lowres swap instead.")
+                    # print(
+                    #    f"Error in enhancing face {target_index}: {e}. Returning lowres swap instead."
+                    # )
+                    pass
 
         return np.array(result)
 
@@ -138,7 +155,7 @@ class _ImageSwap:
         self: Face2Face,
         faces: types_faces,
         image_generator,
-        enhance_face_model: Union[str, None] = 'gpen_bfr_2048',
+        enhance_face_model: Union[str, None] = "gpen_bfr_2048",
     ):
         """
         Changes the face(s) of each image in the target_img_generator to the face of the reference image.
@@ -153,15 +170,17 @@ class _ImageSwap:
         source_faces = list(source_faces.values())
 
         if len(source_faces) == 0:
-            print("No source faces found. Returning image_generator as is.")
+            # print("No source faces found. Returning image_generator as is.")
             return image_generator
 
         for i, target_image in enumerate(image_generator):
             try:
                 target_faces = self.detect_faces(target_image)
-                swapped = self._swap_faces(source_faces, target_faces, target_image, enhance_face_model)
+                swapped = self._swap_faces(
+                    source_faces, target_faces, target_image, enhance_face_model
+                )
                 yield swapped
             except Exception as e:
-                print(f"Error in swapping frame {i} to {faces}: {e}. Skipping image")
+                # print(f"Error in swapping frame {i} to {faces}: {e}. Skipping image")
                 frm = np.array(target_image)
                 yield frm

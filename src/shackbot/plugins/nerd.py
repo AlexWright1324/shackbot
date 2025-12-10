@@ -1,5 +1,6 @@
 import discord
 from discord.ext import commands
+from random import random
 
 
 class Nerd(commands.Cog):
@@ -8,16 +9,16 @@ class Nerd(commands.Cog):
         self.target_user_id = 285808510028087297
         self.muted_at = None
 
-    """
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message):
         if message.author.id != self.target_user_id:
             return
 
-        # TODO: end formatting, only add space before emoji if needed
-        # rstrip
+        # 5% chance to respond
+        if random() > 0.05:
+            return
+
         await message.reply(f"{message.content.rstrip()} ☝️🤓")
-    """
 
     @commands.Cog.listener()
     async def on_voice_state_update(
@@ -74,6 +75,8 @@ class Nerd(commands.Cog):
 
             await channel.send(f"Bro had din dins for {time_str} ☝️🤓")
             break
+        else:
+            print("Could not find a channel to send the nerd mute message.")
 
 
 async def setup(bot: commands.Bot):

@@ -7,7 +7,11 @@ import cv2
 
 import unicodedata
 import glob
-from face2face.model_definitions import SWAPPER_MODELS, FACE_ENHANCER_MODELS, INSIGHT_FACE_MODELS
+from face2face.model_definitions import (
+    SWAPPER_MODELS,
+    FACE_ENHANCER_MODELS,
+    INSIGHT_FACE_MODELS,
+)
 from media_toolkit import ImageFile
 from media_toolkit.utils.download_helper import download_file
 
@@ -38,21 +42,21 @@ def encode_path_safe(filename: str, allow_unicode=False):
     """
     filename = str(filename)
     if allow_unicode:
-        filename = unicodedata.normalize('NFKC', filename)
+        filename = unicodedata.normalize("NFKC", filename)
     else:
         filename = (
-            unicodedata.normalize('NFKD', filename)
-            .encode('ascii', 'ignore')
-            .decode('ascii')
+            unicodedata.normalize("NFKD", filename)
+            .encode("ascii", "ignore")
+            .decode("ascii")
         )
-    filename = re.sub(r'[^\w\s-]', '', filename.lower())
-    return re.sub(r'[-\s]+', '-', filename).strip('-_')
+    filename = re.sub(r"[^\w\s-]", "", filename.lower())
+    return re.sub(r"[-\s]+", "-", filename).strip("-_")
 
 
 def get_files_in_dir(path: str, extensions: list | str = None) -> list:
     """returns all files in a directory filtered by extension list"""
     if not os.path.isdir(path):
-        print(f"{path} is not a directory. Returning empty list")
+        # print(f"{path} is not a directory. Returning empty list")
         return []
 
     files = []
@@ -71,7 +75,7 @@ def get_files_in_dir(path: str, extensions: list | str = None) -> list:
 
 def extract_zip(zip_path: str, extract_path: str):
     # only extract non existing files
-    with zipfile.ZipFile(zip_path, 'r') as zf:
+    with zipfile.ZipFile(zip_path, "r") as zf:
         # Iterate over the files in the zip archive
         for file_name in zf.namelist():
             # Define the full path for the file in the model folder
@@ -97,14 +101,16 @@ def download_model(model_name: str) -> str:
         raise ValueError(f"Model {model_name} not found")
 
     # download model
-    download_url = model_config.get('url', None)
-    save_path = model_config.get('path', None)
+    download_url = model_config.get("url", None)
+    save_path = model_config.get("path", None)
 
     model_dir = os.path.dirname(save_path)
     os.makedirs(model_dir, exist_ok=True)
 
     if not os.path.isfile(save_path):
-        save_path, _ = download_file(download_url=download_url, save_path=save_path, silent=False)
+        save_path, _ = download_file(
+            download_url=download_url, save_path=save_path, silent=False
+        )
 
     if not download_url or not download_url.endswith(".zip"):
         return save_path
@@ -114,5 +120,3 @@ def download_model(model_name: str) -> str:
     os.makedirs(model_folder, exist_ok=True)
 
     return extract_zip(save_path, model_folder)
-
-

@@ -1,3 +1,4 @@
+import io
 import discord
 from discord import app_commands
 from discord.ext import commands
@@ -7,8 +8,16 @@ import traceback
 
 from importlib.resources import files
 
-from face2face import Face2Face
-from media_toolkit import ImageFile
+import numpy as np
+from PIL import Image
+
+from .FaceAnalyser import FaceAnalyser
+from .FaceSwapper import FaceSwapper
+from .FaceEnhancer import FaceEnhancer
+
+from .models import SWAPPER, INSIGHT, FACE_ENHANCER_MODELS
+
+from shackbot.file import download
 
 MAX_WORKERS = 1
 MAX_SIZE = 8 * 1024 * 1024  # 8MB
@@ -21,8 +30,6 @@ async def setup(bot: commands.Bot):
 class Face(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
-        self.f2f = None
-        self.kirk = None
         self.queue: asyncio.Queue[tuple[discord.Interaction, discord.Attachment]] = (
             asyncio.Queue()
         )
@@ -46,51 +53,94 @@ class Face(commands.Cog):
     async def kirkify(
         self, interaction: discord.Interaction, attachment: discord.Attachment
     ):
-        if not self.f2f or not self.kirk:
-            content = "The kirkify service is not available at the moment\nPlease try again later"
-            await interaction.edit_original_response(content=content)
-            return
-
         # TODO: Resize images before processing
         # TODO: Compress images after processing
         bytes = await attachment.read()
-
-        allowed_types = {"image/png", "image/jpeg", "image/jpg", "image/webp"}
-        if attachment.content_type in allowed_types:
-            media = ImageFile().from_bytes(bytes)
-            output_filename = "kirkified.png"
-        else:
+        try:
+            with Image.open(
+                io.BytesIO(bytes), formats=["PNG", "JPEG", "WEBP"]
+            ) as media:
+                media.load()
+        except Exception as _:
+            print(traceback.format_exc())
             content = "Unsupported media type.\nPlease upload a static image (PNG, JPEG, or WebP)"
             await interaction.edit_original_response(content=content)
             return
 
-        # Run face swapping in a separate thread to avoid blocking
-        swapped = await asyncio.to_thread(self.f2f.swap, media=media, faces="kirk")
+        data = np.array(media)
 
-        if isinstance(swapped, ImageFile):
+        faces = await asyncio.to_thread(
+            self.face_analyser.analyze,
+            data,
+            extract_embedding=True,
+            extract_landmarks=False,
+        )
+        if len(faces) == 0:
             content = "No face detected in the media"
             await interaction.edit_original_response(content=content)
             return
 
-        swapped = ImageFile().from_np_array(swapped)
+        swapped = data
+        for face in faces:
+            swapped = await asyncio.to_thread(
+                self.swapper.swap,
+                img=swapped,
+                target_face=face,
+                source_face=self.kirk,
+                paste_back=True,
+            )
+            swapped = await asyncio.to_thread(
+                self.face_enhancer.enhance_face,
+                target_face=face,
+                temp_vision_frame=swapped,
+            )
 
-        bytes_io = swapped.to_bytes_io()
+        swapped = Image.fromarray(swapped)
+        bytes_io = io.BytesIO()
+        swapped.save(bytes_io, "jpeg")
+        bytes_io.seek(0)
 
         if (fileSize := bytes_io.getbuffer().nbytes) > MAX_SIZE:
             content = f"The kirkified image is too large to send: ({fileSize / (1024 * 1024):.1f}MB)"
             await interaction.edit_original_response(content=content)
             return
 
-        discordFile = discord.File(bytes_io, output_filename)
+        discordFile = discord.File(bytes_io, "kirkified.png")
 
         await interaction.delete_original_response()
         await interaction.followup.send(file=discordFile)
 
     async def cog_load(self):
-        self.f2f = await asyncio.to_thread(Face2Face)
+        # Ensure models are downloaded
+        face_enhancer = "gfpgan_1.4"
+        await download(SWAPPER["url"], SWAPPER["path"])
+        await download(INSIGHT["url"], INSIGHT["path"], INSIGHT.get("extract"))
+        await download(
+            FACE_ENHANCER_MODELS[face_enhancer]["url"],
+            FACE_ENHANCER_MODELS[face_enhancer]["path"],
+        )
+
+        self.swapper = await asyncio.to_thread(FaceSwapper, SWAPPER["path"])
+        self.face_analyser = await asyncio.to_thread(FaceAnalyser, INSIGHT["path"])
+        self.face_enhancer = await asyncio.to_thread(
+            FaceEnhancer, FACE_ENHANCER_MODELS[face_enhancer]
+        )
 
         kirkPath = str(files("shackbot.static").joinpath("kirk.jpg"))
-        self.kirk = await asyncio.to_thread(self.f2f.add_face, "kirk", kirkPath)
+        with Image.open(kirkPath) as kirk:
+            kirk.load()
+        kirk = np.array(kirk)
+
+        faces = await asyncio.to_thread(
+            self.face_analyser.analyze,
+            kirk,
+            extract_embedding=True,
+            extract_landmarks=False,
+        )
+        if len(faces) == 0:
+            raise Exception("No face found in kirk.jpg")
+
+        self.kirk = faces[0]
 
     @app_commands.command(name="kirkify")
     @app_commands.describe(attachment="Image to kirkify")
