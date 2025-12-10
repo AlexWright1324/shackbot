@@ -87,7 +87,6 @@
                   wantedBy = [ "multi-user.target" ];
                   environment = {
                     PYTHONUNBUFFERED = "1";
-                    ROOT_DIR = "/var/lib/shackbot";
                   };
                   serviceConfig = {
                     ExecStart = "${cfg.package}/bin/shackbot";
@@ -95,6 +94,7 @@
                     User = "shackbot";
                     Group = "shackbot";
                     EnvironmentFile = cfg.environmentFile;
+                    WorkingDirectory = "/var/lib/shackbot";
                     StateDirectory = "shackbot";
                   };
                 };
